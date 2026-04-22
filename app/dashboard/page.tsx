@@ -1,11 +1,7 @@
-"use client";
-
-import { useState } from "react";
-import { format } from "date-fns";
-import { CalendarIcon } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
+import { parseISO, format } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getWorkoutsForDate } from "@/data/workouts";
+import { CalendarPicker } from "./_components/CalendarPicker";
 
 function formatDate(date: Date): string {
   const day = date.getDate();
@@ -20,46 +16,45 @@ function formatDate(date: Date): string {
   return `${day}${suffix} ${format(date, "MMM yyyy")}`;
 }
 
-const MOCK_WORKOUTS = [
-  { id: 1, name: "Bench Press", sets: 4, reps: 8, weight: "80kg" },
-  { id: 2, name: "Squat", sets: 3, reps: 5, weight: "100kg" },
-  { id: 3, name: "Deadlift", sets: 3, reps: 5, weight: "120kg" },
-];
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const { date: dateParam } = await searchParams;
+  const dateString =
+    typeof dateParam === "string" ? dateParam : format(new Date(), "yyyy-MM-dd");
+  const selectedDate = parseISO(dateString);
 
-export default function DashboardPage() {
-  const [date, setDate] = useState<Date>(new Date());
+  const workoutEntries = await getWorkoutsForDate(selectedDate);
 
   return (
     <main className="flex gap-8 p-8 max-w-5xl mx-auto">
       <aside className="shrink-0">
-        <Calendar
-          mode="single"
-          selected={date}
-          onSelect={(d) => d && setDate(d)}
-          className="rounded-lg border"
-        />
+        <CalendarPicker selectedDate={dateString} />
       </aside>
 
       <section className="flex-1 space-y-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold">Workouts for {formatDate(date)}</h1>
-          <Button variant="outline" size="sm" className="gap-2">
-            <CalendarIcon className="size-4" />
-            {formatDate(date)}
-          </Button>
-        </div>
+        <h1 className="text-2xl font-semibold">
+          Workouts for {formatDate(selectedDate)}
+        </h1>
 
-        {MOCK_WORKOUTS.length === 0 ? (
-          <p className="text-muted-foreground text-sm">No workouts logged for this date.</p>
+        {workoutEntries.length === 0 ? (
+          <p className="text-muted-foreground text-sm">
+            No workouts logged for this date.
+          </p>
         ) : (
           <div className="grid grid-cols-2 gap-4">
-            {MOCK_WORKOUTS.map((workout) => (
-              <Card key={workout.id}>
+            {workoutEntries.map((entry) => (
+              <Card key={entry.workoutExerciseId}>
                 <CardHeader className="pb-1">
-                  <CardTitle className="text-base">{workout.name}</CardTitle>
+                  <CardTitle className="text-base">
+                    {entry.exerciseName}
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="text-sm text-muted-foreground">
-                  {workout.sets} sets × {workout.reps} reps @ {workout.weight}
+                  {entry.setCount} {entry.setCount === 1 ? "set" : "sets"}
+                  {entry.maxWeight ? ` @ ${entry.maxWeight}kg` : ""}
                 </CardContent>
               </Card>
             ))}
